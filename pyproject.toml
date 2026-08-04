@@ -1,0 +1,20 @@
+[project]
+name = "vertisystem-applied-ai-task1"
+version = "0.1.0"
+description = "Terminal-based multi-agent blackjack demo for an Applied AI take-home."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.8,<3.0",
+]
+
+[project.scripts]
+applied-ai-blackjack = "applied_ai_blackjack.main:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
