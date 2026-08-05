@@ -190,7 +190,9 @@ Windows PowerShell:
 $env:GEMINI_API_KEY='your_key_here'
 ```
 
-Optional: if you want to override the default Gemini model, also set `GEMINI_MODEL`.
+Optional: if you want to use a different Gemini model, set `GEMINI_MODEL`.
+
+The live backend in this repo is Gemini, and the default model is `gemini-2.5-flash`. That is just a sensible default for a demo. Reviewers can use any Gemini model their API key has access to.
 
 macOS / Linux:
 
@@ -212,6 +214,12 @@ macOS / Linux or Windows:
 python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
 ```
 
+Optional example with an explicit Gemini model override:
+
+```bash
+python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini --gemini-model gemini-2.5-pro
+```
+
 Step 4: when the human turn appears, try these exact inputs:
 
 1. `tell me a joke`
@@ -228,8 +236,12 @@ Recommended manual test:
 
 Important note about Gemini:
 
-- the code now handles Gemini retry windows for `429` responses
-- if you are on a tight free-tier quota, you may still see pauses or fallback notes during AI turns
+- the live provider wired into this repo is Gemini, but the reviewer can choose a different Gemini model with `GEMINI_MODEL` or `--gemini-model`
+- `gemini-2.5-flash` is the default because it is fast and keeps demo cost and quota usage lower
+- the deterministic engine keeps LLM usage modest because the model is not used for card drawing, score calculation, bust detection, or winner selection
+- each AI player can make at most 3 model-driven decisions because of the 3-card rule, so a normal game stays fairly small in LLM call count
+- the Gemini adapter retries temporary `429`, `500`, and `503` failures a small number of times and respects Gemini retry windows for `429` responses
+- if you are on a tight free-tier quota, you may still see short pauses or deterministic fallback notes during AI turns
 - this does not affect deterministic game correctness
 - if `GEMINI_API_KEY` is missing, the live Gemini path will not start
 - the fake backend remains available for deterministic local testing, but the live Gemini path is the reviewer-facing AI demo
@@ -494,7 +506,7 @@ python -m pytest tests
 
 ## Known Notes
 
-- Task 1 with Gemini can show temporary pauses or fallback notes if the API key is rate-limited.
+- Task 1 with Gemini can show temporary pauses or fallback notes if the API key hits rate limits or free-tier quota windows.
 - Task 2’s automated tests intentionally use SQLite for speed, but the live two-node demo target is PostgreSQL.
 - The repo is designed so the deterministic core remains testable even when live LLM behavior is noisy.
 
