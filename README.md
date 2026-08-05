@@ -142,6 +142,26 @@ Important note about Gemini:
 - if you are on a tight free-tier quota, you may still see pauses or fallback notes during AI turns
 - this does not affect deterministic game correctness
 
+### Task 1 Screenshots
+
+These are real screenshots from a live terminal run of Task 1:
+
+- [AI rounds](screenshots/task1/task1-ai-rounds.png)
+- [Human turn](screenshots/task1/task1-human-turn.png)
+- [Final scoreboard](screenshots/task1/task1-final-scoreboard.png)
+
+AI rounds:
+
+![Task 1 AI rounds](screenshots/task1/task1-ai-rounds.png)
+
+Human turn:
+
+![Task 1 human turn](screenshots/task1/task1-human-turn.png)
+
+Final scoreboard:
+
+![Task 1 final scoreboard](screenshots/task1/task1-final-scoreboard.png)
+
 ### Task 1 Files
 
 - `spec.md`
