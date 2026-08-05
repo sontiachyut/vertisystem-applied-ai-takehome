@@ -130,6 +130,11 @@ class GameOrchestrator:
             dealer_reply = interpretation.reply
         except Exception:
             dealer_intent, dealer_reply = self._fallback_human_intent(raw_message)
+        else:
+            if dealer_intent is DealerIntent.INVALID:
+                fallback_intent, fallback_reply = self._fallback_human_intent(raw_message)
+                if fallback_intent is not DealerIntent.INVALID:
+                    dealer_intent, dealer_reply = fallback_intent, fallback_reply
 
         if dealer_intent is DealerIntent.DEAL_CARD:
             card_dealt = self._process_dealer_request(
@@ -210,9 +215,9 @@ class GameOrchestrator:
 
     def _fallback_human_intent(self, raw_message: str) -> tuple[DealerIntent, str]:
         lowered = raw_message.strip().lower()
-        if re.search(r"\b(stand|stay|hold)\b", lowered):
+        if self._contains_human_keyword(lowered, keywords=("stand", "stay", "hold")):
             return DealerIntent.STAND, "Understood. I will hold your current total."
-        if re.search(r"\b(hit|deal|card|another)\b", lowered):
+        if self._contains_human_keyword(lowered, keywords=("hit", "deal", "card", "another")):
             return DealerIntent.DEAL_CARD, "All right. I will deal the next card to your hand."
         return DealerIntent.INVALID, "I can help with hit or stand requests, but I did not understand that one."
 
@@ -234,3 +239,13 @@ class GameOrchestrator:
                 f"That brings the hand to {total_after} and completes the three-card limit."
             )
         return f"{lead}{player_name}, your next card is {card_dealt}. Total is now {total_after}."
+
+    def _contains_human_keyword(self, lowered_message: str, *, keywords: tuple[str, ...]) -> bool:
+        return any(
+            re.search(rf"\b{keyword}\b", lowered_message) or self._contains_spaced_keyword(lowered_message, keyword)
+            for keyword in keywords
+        )
+
+    def _contains_spaced_keyword(self, lowered_message: str, keyword: str) -> bool:
+        spaced_pattern = r"\s*".join(re.escape(character) for character in keyword)
+        return re.search(rf"(?:^|[^a-z]){spaced_pattern}(?:$|[^a-z])", lowered_message) is not None

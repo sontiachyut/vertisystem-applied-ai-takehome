@@ -21,6 +21,17 @@ class BrokenBackend:
         raise ValueError("malformed output")
 
 
+class InvalidDealerBackend:
+    def generate_structured(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_model: type[BaseModel],
+    ) -> BaseModel:
+        return response_model.model_validate({"intent": "invalid", "reply": "I did not understand that."})
+
+
 def _build_engine(*, seed: int = 13) -> GameEngine:
     engine = GameEngine(seed=seed)
     engine.add_participant(player_id="dealer", display_name="Dealer", role=ParticipantRole.DEALER)
@@ -122,6 +133,19 @@ def test_human_turn_short_circuits_when_player_is_already_done() -> None:
     assert result.player_is_done is True
     assert result.dealer_reply == "Human is already done."
     assert orchestrator.engine.get_participant("human").cards == [7, 7, 7]
+
+
+def test_human_spaced_out_stand_request_is_recovered_by_deterministic_fallback() -> None:
+    orchestrator = _build_orchestrator(player_backend=FakeLLMBackend(), dealer_backend=InvalidDealerBackend())
+    orchestrator.engine.get_participant("human").cards = [2, 4]
+
+    result = orchestrator.process_human_turn("s tan d")
+
+    assert result.action == "stand"
+    assert result.dealer_intent == "stand"
+    assert result.card_dealt is None
+    assert result.dealer_reply == "Understood. I will hold your current total."
+    assert orchestrator.engine.get_participant("human").has_stood is True
 
 
 def test_three_card_completion_is_called_out_in_dealer_reply() -> None:
