@@ -24,10 +24,10 @@ If you only want the shortest path to verifying the submission:
 4. Run Task 1.
 5. Run Task 2.
 
-Commands:
+macOS / Linux:
 
 ```bash
-cd /Users/achyutaramsonti/Projects/vertisystem-applied-ai-task1
+cd /path/to/vertisystem-applied-ai-task1
 python3.12 -m venv .venv312
 source .venv312/bin/activate
 python -m pip install --upgrade pip
@@ -35,16 +35,46 @@ python -m pip install -e '.[dev]'
 python -m pytest tests
 ```
 
+Windows PowerShell:
+
+```powershell
+cd C:\path\to\vertisystem-applied-ai-task1
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+python -m pytest tests
+```
+
 Expected result:
 
 - the full suite should pass
-- current passing status is `43 passed`
+- current passing status is `44 passed`
 
 ## Requirements
 
 - Python `3.12+`
 - `docker compose` only if you want the PostgreSQL-backed Task 2 two-node demo
 - Gemini API key only if you want the live-LLM Task 1 demo instead of the fake backend
+- compatible with macOS, Linux, and Windows
+
+## Windows Notes
+
+The code is ordinary Python and is intended to run on Windows as well.
+
+The main differences on Windows are:
+
+1. use `py -3.12` instead of `python3.12`
+2. activate the virtual environment with `.\.venv312\Scripts\Activate.ps1`
+3. set environment variables with `$env:NAME="value"` in PowerShell
+
+Everything else is the same idea as macOS/Linux.
+
+If PowerShell blocks activation, run this once in that terminal and then try again:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+```
 
 ## Project Layout
 
@@ -102,7 +132,7 @@ A: No. Deterministic Python still owns the real game logic. Python draws the car
 Run the deterministic fake backend:
 
 ```bash
-PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5
+python -m applied_ai_blackjack.main --seed 5
 ```
 
 What to expect:
@@ -124,37 +154,89 @@ Invalid input such as `tell me a joke` should be rejected without changing the h
 
 ### Task 1: Live Gemini Demo
 
-Set your key in the shell:
+The repo does **not** include a Gemini API key.
+
+If the reviewer wants to run the live Gemini path, they must provide their own API key in their terminal session first.
+
+Step 1: activate the Python 3.12 environment.
+
+macOS / Linux:
+
+```bash
+cd /path/to/vertisystem-applied-ai-task1
+source .venv312/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+cd C:\path\to\vertisystem-applied-ai-task1
+.\.venv312\Scripts\Activate.ps1
+```
+
+Step 2: set the Gemini API key.
+
+Use your own Gemini key here. The repository does not contain one.
+
+macOS / Linux:
 
 ```bash
 export GEMINI_API_KEY='your_key_here'
+```
+
+Windows PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY='your_key_here'
+```
+
+Optional: if you want to override the default Gemini model, also set `GEMINI_MODEL`.
+
+macOS / Linux:
+
+```bash
 export GEMINI_MODEL='gemini-2.5-flash'
 ```
 
-Run the game:
+Windows PowerShell:
+
+```powershell
+$env:GEMINI_MODEL='gemini-2.5-flash'
+```
+
+Step 3: run the game.
+
+macOS / Linux or Windows:
 
 ```bash
-PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
+python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
 ```
+
+Step 4: when the human turn appears, try these exact inputs:
+
+1. `tell me a joke`
+2. `deal me the next card`
+3. `hit`
+4. `I want to stand`
 
 Recommended manual test:
 
-1. type `tell me a joke`
-2. confirm the dealer rejects it cleanly
-3. type `deal me the next card`
-4. type `hit`
-5. type `s tan d`
-6. confirm the game recovers that spaced-out stand request and ends normally
+1. confirm unrelated input is rejected cleanly
+2. confirm natural language for another card is interpreted correctly
+3. confirm the dealer is still the one who announces the dealt card
+4. confirm the final scoreboard prints at the end
 
 Important note about Gemini:
 
 - the code now handles Gemini retry windows for `429` responses
 - if you are on a tight free-tier quota, you may still see pauses or fallback notes during AI turns
 - this does not affect deterministic game correctness
+- if `GEMINI_API_KEY` is missing, the live Gemini path will not start
+- the fake backend remains available for deterministic local testing, but the live Gemini path is the reviewer-facing AI demo
 
 ### Task 1 Screenshots
 
-These are real screenshots from a live terminal run of Task 1:
+These are real screenshots from a live terminal run of Task 1 with Gemini enabled:
 
 - [AI rounds](screenshots/task1/task1-ai-rounds.png)
 - [Human turn](screenshots/task1/task1-human-turn.png)
@@ -227,6 +309,15 @@ Note:
 
 ### Task 2: Two-Node Local Demo
 
+This is the simplest reviewer flow:
+
+1. start PostgreSQL
+2. start Node A on port `8001`
+3. start Node B on port `8002`
+4. send a write to one node
+5. confirm the other node sees the same sum
+6. reset on one node and confirm the reset is visible from the other
+
 Start PostgreSQL:
 
 ```bash
@@ -236,17 +327,31 @@ docker compose -f docker-compose.task2.yml up -d
 Start Node A in one terminal:
 
 ```bash
-cd /Users/achyutaramsonti/Projects/vertisystem-applied-ai-task1
+cd /path/to/vertisystem-applied-ai-task1
 source .venv312/bin/activate
-PYTHONPATH=. python -m applied_ai_abacus.main --port 8001
+python -m applied_ai_abacus.main --port 8001
 ```
 
 Start Node B in another terminal:
 
 ```bash
-cd /Users/achyutaramsonti/Projects/vertisystem-applied-ai-task1
+cd /path/to/vertisystem-applied-ai-task1
 source .venv312/bin/activate
-PYTHONPATH=. python -m applied_ai_abacus.main --port 8002
+python -m applied_ai_abacus.main --port 8002
+```
+
+Windows PowerShell equivalents:
+
+```powershell
+cd C:\path\to\vertisystem-applied-ai-task1
+.\.venv312\Scripts\Activate.ps1
+python -m applied_ai_abacus.main --port 8001
+```
+
+```powershell
+cd C:\path\to\vertisystem-applied-ai-task1
+.\.venv312\Scripts\Activate.ps1
+python -m applied_ai_abacus.main --port 8002
 ```
 
 Default database URL:
@@ -261,7 +366,15 @@ Optional override:
 export ABACUS_DATABASE_URL=postgresql+psycopg://abacus:abacus@127.0.0.1:5432/abacus
 ```
 
+Windows PowerShell override:
+
+```powershell
+$env:ABACUS_DATABASE_URL='postgresql+psycopg://abacus:abacus@127.0.0.1:5432/abacus'
+```
+
 ### Task 2: Manual Terminal Demo
+
+macOS / Linux examples:
 
 Initial read from Node A:
 
@@ -295,6 +408,38 @@ Read through Node A again:
 curl -s http://127.0.0.1:8001/abacus/sum
 ```
 
+Windows PowerShell examples:
+
+Initial read from Node A:
+
+```powershell
+Invoke-RestMethod -Method Get -Uri http://127.0.0.1:8001/abacus/sum
+```
+
+Write through Node A:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8001/abacus/number -ContentType "application/json" -Body '{"number":5}'
+```
+
+Read through Node B:
+
+```powershell
+Invoke-RestMethod -Method Get -Uri http://127.0.0.1:8002/abacus/sum
+```
+
+Reset through Node B:
+
+```powershell
+Invoke-RestMethod -Method Delete -Uri http://127.0.0.1:8002/abacus/sum
+```
+
+Read through Node A again:
+
+```powershell
+Invoke-RestMethod -Method Get -Uri http://127.0.0.1:8001/abacus/sum
+```
+
 Expected result:
 
 - a write to Node A is visible from Node B
@@ -313,6 +458,18 @@ wait
 curl -s http://127.0.0.1:8001/abacus/sum
 ```
 
+Windows PowerShell version:
+
+```powershell
+1..50 | ForEach-Object {
+    Start-Job { Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8001/abacus/number -ContentType "application/json" -Body '{"number":1}' } | Out-Null
+    Start-Job { Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8002/abacus/number -ContentType "application/json" -Body '{"number":1}' } | Out-Null
+}
+Get-Job | Wait-Job | Out-Null
+Get-Job | Remove-Job
+Invoke-RestMethod -Method Get -Uri http://127.0.0.1:8001/abacus/sum
+```
+
 ### Task 2 Files
 
 - `task2_spec.md`
@@ -325,6 +482,13 @@ From the project root:
 
 ```bash
 source .venv312/bin/activate
+python -m pytest tests
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv312\Scripts\Activate.ps1
 python -m pytest tests
 ```
 
