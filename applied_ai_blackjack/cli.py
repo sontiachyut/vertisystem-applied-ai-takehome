@@ -69,7 +69,7 @@ def run_game(
         participant = orchestrator.engine.get_participant(player_id)
         while not orchestrator.engine.is_player_done(player_id):
             if participant.role is ParticipantRole.HUMAN_PLAYER:
-                result = _run_human_turn(orchestrator, input_fn=input_fn)
+                result = _run_human_turn(orchestrator, input_fn=input_fn, output_fn=output_fn)
                 if result.action == "invalid":
                     output_fn(f"Dealer: {result.dealer_reply}")
                     output_fn("")
@@ -85,13 +85,21 @@ def _run_human_turn(
     orchestrator: GameOrchestrator,
     *,
     input_fn: Callable[[str], str],
+    output_fn: Callable[[str], None],
 ) -> TurnResult:
     human_state = orchestrator.engine.get_participant(orchestrator.human_player_id)
     prompt = (
         f"Your turn. Hand={human_state.cards} Total={human_state.total}. "
         "Type hit/stand or say something like 'deal me the next card': "
     )
-    raw_message = input_fn(prompt)
+    try:
+        raw_message = input_fn(prompt)
+    except EOFError:
+        output_fn("Dealer: No input received. Standing for the human player.")
+        return orchestrator.process_human_turn("stand")
+    except KeyboardInterrupt:
+        output_fn("Dealer: Input interrupted. Standing for the human player.")
+        return orchestrator.process_human_turn("stand")
     return orchestrator.process_human_turn(raw_message)
 
 

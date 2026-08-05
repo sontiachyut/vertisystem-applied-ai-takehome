@@ -109,6 +109,21 @@ class GameOrchestrator:
 
     def process_human_turn(self, raw_message: str) -> TurnResult:
         participant = self.engine.get_participant(self.human_player_id)
+        if self.engine.is_player_done(self.human_player_id):
+            return TurnResult(
+                player_id=self.human_player_id,
+                action="stand",
+                reason="Player is already done for the round.",
+                used_fallback=False,
+                dealer_intent=DealerIntent.STAND.value,
+                dealer_reply=f"{participant.display_name} is already done.",
+                card_dealt=None,
+                player_total_after=participant.total,
+                player_card_count_after=participant.card_count,
+                player_is_bust=participant.is_bust,
+                player_has_stood=participant.has_stood,
+                player_is_done=self.engine.is_player_done(self.human_player_id),
+            )
         try:
             interpretation = self.dealer_agent.interpret_request(raw_message)
             dealer_intent = DealerIntent(interpretation.intent)

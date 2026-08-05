@@ -1,182 +1,211 @@
-# Vertisystem Applied AI Task 1
+# Vertisystem Applied AI Take-Home
 
-Terminal-based multi-agent blackjack demo built for an `Applied AI Engineer` take-home.
+This repo now contains both screening tasks:
 
-This project is intentionally small in scope, but engineered like a real applied-AI system:
+1. Task 1: terminal-based multi-agent blackjack demo
+2. Task 2: FastAPI abacus microservice with shared-sum consistency
 
-- deterministic Python owns game truth
-- AI agents only decide actions or interpret requests
-- only the dealer can access the card-draw tool
-- fake and real LLM backends share the same adapter interface
-- core rules are covered by automated tests
+The two implementations are kept separate:
 
-## What This Demonstrates
-
-The goal is not full blackjack. The goal is to show:
-
-1. role-based agent design
-2. controlled tool access
-3. structured model outputs
-4. deterministic orchestration around LLM behavior
-5. a usable terminal demo instead of a one-off script
-
-## Architecture
-
-```text
-CLI
-  ->
-Game Orchestrator
-  ->
-AI Player / Human Request
-  ->
-Dealer Agent
-  ->
-Card Draw Tool
-  ->
-Deterministic Game Engine
-  ->
-Terminal Transcript + Final Outcome
-```
+- `applied_ai_blackjack/` for Task 1
+- `applied_ai_abacus/` for Task 2
 
 ## Project Layout
 
 ```text
 applied_ai_blackjack/
-  cli.py
-  dealer_agent.py
-  game_engine.py
-  llm_backend.py
-  main.py
-  models.py
-  orchestrator.py
-  player_agents.py
+applied_ai_abacus/
 features/
   task1_blackjack.feature
+  task2_abacus.feature
 tests/
-  test_backend_factory.py
-  test_cli_smoke.py
-  test_fake_llm_backend.py
-  test_game_engine.py
-  test_orchestrator.py
 spec.md
+task2_spec.md
+docker-compose.task2.yml
 ```
 
-## Core Rules
-
-- One dealer mediates all card draws.
-- Three AI players and one human player compete.
-- Each scoring player may hold at most `3` cards.
-- Card values are random integers in the range `2..11`.
-- Winner is the highest total under or equal to `21`.
-- If multiple players share the highest valid total, the game reports a tie.
-- If every scoring player busts, there is no winner.
-
-## LLM Design
-
-The LLM is used only for:
-
-- AI player decisions: `hit` or `stand`
-- dealer request interpretation: `deal_card`, `stand`, or `invalid`
-
-The LLM is **not** used for:
-
-- card generation
-- score calculation
-- rule enforcement
-- turn limits
-- winner selection
-
-That split is deliberate. It keeps the system explainable, testable, and resilient.
-
-## Backends
-
-### 1. Fake backend
-
-The default path is a deterministic `FakeLLMBackend`. It is useful for:
-
-- local development
-- repeatable demos
-- fast regression tests
-
-### 2. Gemini backend
-
-A real Gemini-backed adapter is included behind the same interface. It is opt-in and uses environment variables so the API key does not live in source.
-
-## Local Setup
+## Setup
 
 From the project root:
 
 ```bash
+python -m pip install -e .
 python -m pytest tests
+```
+
+## Task 1
+
+Task 1 is a deterministic-rule blackjack demo where the LLM is only used for:
+
+- AI player decisions: `hit` / `stand`
+- dealer request interpretation: `deal_card` / `stand` / `invalid`
+
+The LLM is not trusted with game truth. Python owns:
+
+- game state
+- score calculation
+- bust detection
+- max-3-card enforcement
+- winner selection
+
+### Run Task 1
+
+Default fake backend:
+
+```bash
 PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5
 ```
 
-That runs the app with the fake backend.
-
-## Run With Gemini
+Gemini backend:
 
 ```bash
 export GEMINI_API_KEY=your_key_here
 PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
 ```
 
-Optional model override:
+Optional Gemini model override:
 
 ```bash
 export GEMINI_MODEL=gemini-2.5-flash
 PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
 ```
 
-Or pass the model directly:
+Specs:
 
-```bash
-PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini --gemini-model gemini-2.5-flash
+- `spec.md`
+- `features/task1_blackjack.feature`
+
+## Task 2
+
+Task 2 is a FastAPI microservice with three endpoints:
+
+- `POST /abacus/number` with `{"number": N}`
+- `GET /abacus/sum`
+- `DELETE /abacus/sum`
+
+V1 design choices:
+
+- stateless FastAPI nodes
+- shared authoritative PostgreSQL store for the live demo path
+- one authoritative `abacus_state` row
+- atomic increment/reset operations
+- strict integer validation
+- no node-local fallback state
+
+The API response shape is intentionally minimal:
+
+```json
+{"sum": 18}
 ```
 
-## Example
-
-```text
-Welcome to Applied AI Blackjack.
-Table: Dealer | AI Player 1 | AI Player 2 | AI Player 3 | Human
-Rules: only the dealer can draw cards, each scoring player may hold up to 3 cards, and the highest total under 21 wins.
-
-[AI Player 1]
-Decision: hit
-Reason: AI Player 1 has no cards yet, so opening with a draw is the only sensible move.
-Dealer: AI Player 1, your next card is 11. Total is now 11.
-Hand: [11] | Total: 11 | Status: active
-```
-
-## Testing
-
-The test suite currently covers:
-
-- deterministic card draws with seeding
-- three-card limit enforcement
-- bust exclusion from winner selection
-- explicit tie handling
-- dealer-only card routing
-- malformed AI output fallback
-- backend factory behavior
-- CLI smoke run
-
-Run all tests:
+### Run Task 2 Tests
 
 ```bash
 python -m pytest tests
 ```
 
-## Design Notes
+Note:
 
-- `spec.md` is the implementation spec.
-- `features/task1_blackjack.feature` contains BDD-style acceptance scenarios.
-- The fake backend lets the system be built and verified before paying for or depending on live model calls.
-- The real backend is intentionally thin so it can be swapped or extended later.
+- automated tests use temporary SQLite databases for fast local verification
+- the live two-node demo target remains PostgreSQL, matching `task2_spec.md`
 
-## Current Status
+### Run Task 2 Locally With Two Nodes
 
-- deterministic engine implemented
-- fake backend implemented
-- Gemini backend implemented
-- terminal transcript polished
-- automated tests passing
+Start PostgreSQL:
+
+```bash
+docker compose -f docker-compose.task2.yml up -d
+```
+
+Start Node A in one terminal:
+
+```bash
+PYTHONPATH=. python -m applied_ai_abacus.main --port 8001
+```
+
+Start Node B in another terminal:
+
+```bash
+PYTHONPATH=. python -m applied_ai_abacus.main --port 8002
+```
+
+The default database URL used by the service is:
+
+```text
+postgresql+psycopg://abacus:abacus@127.0.0.1:5432/abacus
+```
+
+If you want to override it:
+
+```bash
+export ABACUS_DATABASE_URL=postgresql+psycopg://abacus:abacus@127.0.0.1:5432/abacus
+```
+
+### Demo Task 2 From The Terminal
+
+Initial read from Node A:
+
+```bash
+curl -s http://127.0.0.1:8001/abacus/sum
+```
+
+Write through Node A:
+
+```bash
+curl -s -X POST http://127.0.0.1:8001/abacus/number \
+  -H 'Content-Type: application/json' \
+  -d '{"number": 5}'
+```
+
+Read through Node B:
+
+```bash
+curl -s http://127.0.0.1:8002/abacus/sum
+```
+
+Reset through Node B:
+
+```bash
+curl -s -X DELETE http://127.0.0.1:8002/abacus/sum
+```
+
+Read through Node A again:
+
+```bash
+curl -s http://127.0.0.1:8001/abacus/sum
+```
+
+### Concurrent Smoke Check
+
+This simple shell loop should end at `{"sum":100}`:
+
+```bash
+for i in $(seq 1 50); do
+  curl -s -X POST http://127.0.0.1:8001/abacus/number -H 'Content-Type: application/json' -d '{"number":1}' >/dev/null &
+  curl -s -X POST http://127.0.0.1:8002/abacus/number -H 'Content-Type: application/json' -d '{"number":1}' >/dev/null &
+done
+wait
+curl -s http://127.0.0.1:8001/abacus/sum
+```
+
+Specs:
+
+- `task2_spec.md`
+- `features/task2_abacus.feature`
+
+## Test Coverage
+
+Current tests cover:
+
+- Task 1 deterministic game rules and orchestration
+- Task 1 LLM prompt/parsing hardening
+- Task 2 API behavior
+- Task 2 strict validation
+- Task 2 cross-node shared-state visibility
+- Task 2 concurrent update correctness
+
+Run everything:
+
+```bash
+python -m pytest tests
+```

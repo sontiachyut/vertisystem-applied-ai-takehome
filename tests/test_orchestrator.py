@@ -110,6 +110,20 @@ def test_invalid_human_request_does_not_mutate_state() -> None:
     assert orchestrator.engine.get_participant("human").cards == [8, 2]
 
 
+def test_human_turn_short_circuits_when_player_is_already_done() -> None:
+    orchestrator = _build_orchestrator(player_backend=FakeLLMBackend(), dealer_backend=FakeLLMBackend())
+    orchestrator.engine.get_participant("human").cards = [7, 7, 7]
+
+    result = orchestrator.process_human_turn("deal me the next card")
+
+    assert result.action == "stand"
+    assert result.dealer_intent == "stand"
+    assert result.card_dealt is None
+    assert result.player_is_done is True
+    assert result.dealer_reply == "Human is already done."
+    assert orchestrator.engine.get_participant("human").cards == [7, 7, 7]
+
+
 def test_three_card_completion_is_called_out_in_dealer_reply() -> None:
     orchestrator = _build_orchestrator(player_backend=FakeLLMBackend(), dealer_backend=FakeLLMBackend())
     orchestrator.engine.get_participant("ai-3").cards = [2, 2]

@@ -20,3 +20,35 @@ def test_cli_smoke_run_produces_final_scoreboard() -> None:
     assert any("Welcome to Applied AI Blackjack." in message for message in outputs)
     assert any("Final scoreboard:" in message for message in outputs)
     assert any("Winner:" in message or "It's a tie" in message or "No winner." in message for message in outputs)
+
+
+def test_cli_eof_input_gracefully_stands_human_and_finishes_round() -> None:
+    outputs: list[str] = []
+
+    def fake_input(prompt: str) -> str:
+        outputs.append(prompt)
+        raise EOFError
+
+    def fake_output(message: str) -> None:
+        outputs.append(message)
+
+    run_game(seed=5, input_fn=fake_input, output_fn=fake_output, llm_backend=FakeLLMBackend())
+
+    assert any("No input received. Standing for the human player." in message for message in outputs)
+    assert any("Final scoreboard:" in message for message in outputs)
+
+
+def test_cli_keyboard_interrupt_gracefully_stands_human_and_finishes_round() -> None:
+    outputs: list[str] = []
+
+    def fake_input(prompt: str) -> str:
+        outputs.append(prompt)
+        raise KeyboardInterrupt
+
+    def fake_output(message: str) -> None:
+        outputs.append(message)
+
+    run_game(seed=5, input_fn=fake_input, output_fn=fake_output, llm_backend=FakeLLMBackend())
+
+    assert any("Input interrupted. Standing for the human player." in message for message in outputs)
+    assert any("Final scoreboard:" in message for message in outputs)

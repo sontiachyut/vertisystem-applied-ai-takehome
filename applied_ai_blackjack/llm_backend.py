@@ -108,10 +108,10 @@ class GeminiLLMBackend:
         parts = response_payload.get("candidates", [{}])[0].get("content", {}).get("parts", [])
         if not parts:
             return {}
-        text = parts[0].get("text", "").strip()
+        text = "\n".join(part.get("text", "") for part in parts if part.get("text")).strip()
         if not text:
             return {}
-        return json.loads(text)
+        return _parse_json_response_text(text)
 
 
 class FakeLLMBackend:
@@ -222,3 +222,45 @@ def _clean_schema(value):
     if isinstance(value, list):
         return [_clean_schema(item) for item in value]
     return value
+
+
+def _parse_json_response_text(text: str) -> dict:
+    stripped_text = text.strip()
+    if not stripped_text:
+        return {}
+
+    direct_payload = _try_parse_json_object(stripped_text)
+    if direct_payload is not None:
+        return direct_payload
+
+    unfenced_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", stripped_text, flags=re.IGNORECASE | re.DOTALL).strip()
+    if unfenced_text != stripped_text:
+        unfenced_payload = _try_parse_json_object(unfenced_text)
+        if unfenced_payload is not None:
+            return unfenced_payload
+
+    extracted_payload = _extract_first_json_object(stripped_text)
+    if extracted_payload is not None:
+        return extracted_payload
+
+    raise ValueError("Gemini returned non-JSON structured content.")
+
+
+def _try_parse_json_object(text: str) -> dict | None:
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _extract_first_json_object(text: str) -> dict | None:
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            payload, _ = decoder.raw_decode(text[match.start() :])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
