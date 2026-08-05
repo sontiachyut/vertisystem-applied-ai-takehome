@@ -1,14 +1,50 @@
 # Vertisystem Applied AI Take-Home
 
-This repo now contains both screening tasks:
+This repository contains both take-home tasks:
 
 1. Task 1: terminal-based multi-agent blackjack demo
-2. Task 2: FastAPI abacus microservice with shared-sum consistency
+2. Task 2: FastAPI abacus microservice with cross-node consistency
 
-The two implementations are kept separate:
+The code is organized so each task can be reviewed independently:
 
 - `applied_ai_blackjack/` for Task 1
 - `applied_ai_abacus/` for Task 2
+- `spec.md` for the Task 1 implementation spec
+- `task2_spec.md` for the Task 2 implementation spec
+- `features/` for BDD-style acceptance criteria
+- `tests/` for automated regression coverage
+
+## Reviewer Quick Start
+
+If you only want the shortest path to verifying the submission:
+
+1. Create and activate a Python 3.12 virtual environment.
+2. Install the project with dev dependencies.
+3. Run the test suite.
+4. Run Task 1.
+5. Run Task 2.
+
+Commands:
+
+```bash
+cd /Users/achyutaramsonti/Projects/vertisystem-applied-ai-task1
+python3.12 -m venv .venv312
+source .venv312/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+python -m pytest tests
+```
+
+Expected result:
+
+- the full suite should pass
+- current passing status is `43 passed`
+
+## Requirements
+
+- Python `3.12+`
+- `docker compose` only if you want the PostgreSQL-backed Task 2 two-node demo
+- Gemini API key only if you want the live-LLM Task 1 demo instead of the fake backend
 
 ## Project Layout
 
@@ -24,104 +60,142 @@ task2_spec.md
 docker-compose.task2.yml
 ```
 
-## Setup
-
-From the project root:
-
-```bash
-python -m pip install -e '.[dev]'
-python -m pytest tests
-```
-
-If you want to match the project requirement without disturbing your existing Python installation, use a separate Python 3.12 virtual environment:
-
-```bash
-python3.12 -m venv .venv312
-source .venv312/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e '.[dev]'
-python -m pytest tests
-```
-
-That keeps the repo isolated on Python 3.12 while leaving your current Python 3.11 environment untouched.
-
 ## Task 1
 
-Task 1 is a deterministic-rule blackjack demo where the LLM is only used for:
+Task 1 is a simplified blackjack-style terminal demo with:
 
-- AI player decisions: `hit` / `stand`
-- dealer request interpretation: `deal_card` / `stand` / `invalid`
+- 1 AI dealer
+- 3 AI player agents
+- 1 human player
 
-The LLM is not trusted with game truth. Python owns:
+### Task 1 Design Boundary
 
+The LLM is only used for:
+
+- AI player decisions: `hit` or `stand`
+- dealer interpretation of human input: `deal_card`, `stand`, or `invalid`
+
+Deterministic Python owns:
+
+- card drawing
 - game state
 - score calculation
 - bust detection
-- max-3-card enforcement
+- 3-card limit enforcement
 - winner selection
+- final scoreboard rendering
 
-### Run Task 1
+That split is deliberate. The model proposes actions; Python decides what is actually allowed to happen.
 
-Default fake backend:
+### Task 1: Fastest Demo Path
+
+Run the deterministic fake backend:
 
 ```bash
 PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5
 ```
 
-Gemini backend:
+What to expect:
+
+1. the 3 AI players act first
+2. the human is prompted in plain language
+3. the dealer is the only actor who announces dealt cards
+4. a final scoreboard prints at the end
+
+Useful human inputs:
+
+- `deal me the next card`
+- `hit`
+- `another one`
+- `hold my total`
+- `stand`
+
+Invalid input such as `tell me a joke` should be rejected without changing the hand.
+
+### Task 1: Live Gemini Demo
+
+Set your key in the shell:
 
 ```bash
-export GEMINI_API_KEY=your_key_here
+export GEMINI_API_KEY='your_key_here'
+export GEMINI_MODEL='gemini-2.5-flash'
+```
+
+Run the game:
+
+```bash
 PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
 ```
 
-Optional Gemini model override:
+Recommended manual test:
 
-```bash
-export GEMINI_MODEL=gemini-2.5-flash
-PYTHONPATH=. python -m applied_ai_blackjack.main --seed 5 --llm-backend gemini
-```
+1. type `tell me a joke`
+2. confirm the dealer rejects it cleanly
+3. type `deal me the next card`
+4. type `hit`
+5. type `s tan d`
+6. confirm the game recovers that spaced-out stand request and ends normally
 
-Specs:
+Important note about Gemini:
+
+- the code now handles Gemini retry windows for `429` responses
+- if you are on a tight free-tier quota, you may still see pauses or fallback notes during AI turns
+- this does not affect deterministic game correctness
+
+### Task 1 Files
 
 - `spec.md`
 - `features/task1_blackjack.feature`
+- `applied_ai_blackjack/`
 
 ## Task 2
 
-Task 2 is a FastAPI microservice with three endpoints:
+Task 2 is a FastAPI microservice with these APIs:
 
 - `POST /abacus/number` with `{"number": N}`
 - `GET /abacus/sum`
 - `DELETE /abacus/sum`
 
-V1 design choices:
+### Task 2 Design Boundary
 
-- stateless FastAPI nodes
-- shared authoritative PostgreSQL store for the live demo path
+V1 uses:
+
+- stateless FastAPI service nodes
+- a shared authoritative database
 - one authoritative `abacus_state` row
 - atomic increment/reset operations
 - strict integer validation
 - no node-local fallback state
 
-The API response shape is intentionally minimal:
+The response shape is intentionally minimal:
 
 ```json
 {"sum": 18}
 ```
 
-### Run Task 2 Tests
+### Task 2: Fastest Verification Path
+
+Run the tests:
 
 ```bash
 python -m pytest tests
 ```
+
+The automated tests cover:
+
+- endpoint behavior
+- strict validation
+- overflow rejection
+- reset behavior
+- shared-state visibility across two nodes
+- concurrent update correctness
 
 Note:
 
 - automated tests use temporary SQLite databases for fast local verification
 - the live two-node demo target remains PostgreSQL, matching `task2_spec.md`
 
-### Run Task 2 Locally With Two Nodes
+### Task 2: Two-Node Local Demo
 
 Start PostgreSQL:
 
@@ -132,28 +206,32 @@ docker compose -f docker-compose.task2.yml up -d
 Start Node A in one terminal:
 
 ```bash
+cd /Users/achyutaramsonti/Projects/vertisystem-applied-ai-task1
+source .venv312/bin/activate
 PYTHONPATH=. python -m applied_ai_abacus.main --port 8001
 ```
 
 Start Node B in another terminal:
 
 ```bash
+cd /Users/achyutaramsonti/Projects/vertisystem-applied-ai-task1
+source .venv312/bin/activate
 PYTHONPATH=. python -m applied_ai_abacus.main --port 8002
 ```
 
-The default database URL used by the service is:
+Default database URL:
 
 ```text
 postgresql+psycopg://abacus:abacus@127.0.0.1:5432/abacus
 ```
 
-If you want to override it:
+Optional override:
 
 ```bash
 export ABACUS_DATABASE_URL=postgresql+psycopg://abacus:abacus@127.0.0.1:5432/abacus
 ```
 
-### Demo Task 2 From The Terminal
+### Task 2: Manual Terminal Demo
 
 Initial read from Node A:
 
@@ -187,9 +265,14 @@ Read through Node A again:
 curl -s http://127.0.0.1:8001/abacus/sum
 ```
 
-### Concurrent Smoke Check
+Expected result:
 
-This simple shell loop should end at `{"sum":100}`:
+- a write to Node A is visible from Node B
+- a reset on Node B is visible from Node A
+
+### Task 2: Concurrent Smoke Check
+
+This shell loop should end at `{"sum":100}`:
 
 ```bash
 for i in $(seq 1 50); do
@@ -200,24 +283,30 @@ wait
 curl -s http://127.0.0.1:8001/abacus/sum
 ```
 
-Specs:
+### Task 2 Files
 
 - `task2_spec.md`
 - `features/task2_abacus.feature`
+- `applied_ai_abacus/`
 
-## Test Coverage
+## Running Everything
 
-Current tests cover:
-
-- Task 1 deterministic game rules and orchestration
-- Task 1 LLM prompt/parsing hardening
-- Task 2 API behavior
-- Task 2 strict validation
-- Task 2 cross-node shared-state visibility
-- Task 2 concurrent update correctness
-
-Run everything:
+From the project root:
 
 ```bash
+source .venv312/bin/activate
 python -m pytest tests
 ```
+
+## Known Notes
+
+- Task 1 with Gemini can show temporary pauses or fallback notes if the API key is rate-limited.
+- Task 2’s automated tests intentionally use SQLite for speed, but the live two-node demo target is PostgreSQL.
+- The repo is designed so the deterministic core remains testable even when live LLM behavior is noisy.
+
+## Screenshots / Demo Artifacts
+
+If you want to add screenshots to the repo, a good minimum set is:
+
+1. Task 1 terminal transcript showing AI turns, invalid human input rejection, and final scoreboard
+2. Task 2 terminal transcript showing Node A write and Node B read of the same sum
