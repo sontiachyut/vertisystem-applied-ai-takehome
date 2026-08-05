@@ -29,9 +29,21 @@ docker-compose.task2.yml
 From the project root:
 
 ```bash
-python -m pip install -e .
+python -m pip install -e '.[dev]'
 python -m pytest tests
 ```
+
+If you want to match the project requirement without disturbing your existing Python installation, use a separate Python 3.12 virtual environment:
+
+```bash
+python3.12 -m venv .venv312
+source .venv312/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+python -m pytest tests
+```
+
+That keeps the repo isolated on Python 3.12 while leaving your current Python 3.11 environment untouched.
 
 ## Task 1
 
