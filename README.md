@@ -87,6 +87,16 @@ Deterministic Python owns:
 
 That split is deliberate. The model proposes actions; Python decides what is actually allowed to happen.
 
+### Task 1 Q&A
+
+**Q: How is AI actually used in Task 1?**
+
+A: AI is used for decision-making and interpretation, not for authoritative state changes. Each AI player looks at the visible game context and proposes `hit` or `stand`. The dealer model interprets human language like `deal me the next card` or `hold my total` and maps it to a narrow intent.
+
+**Q: Does the AI decide the actual game outcome?**
+
+A: No. Deterministic Python still owns the real game logic. Python draws the cards, updates the hands, calculates totals, detects busts, enforces the 3-card rule, and selects the winner. The AI proposes actions; Python executes or rejects them.
+
 ### Task 1: Fastest Demo Path
 
 Run the deterministic fake backend:
