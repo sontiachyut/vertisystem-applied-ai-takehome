@@ -61,6 +61,7 @@ def test_ai_player_prompt_includes_style_and_tool_boundary() -> None:
     assert "Style profile: cautious" in system_prompt
     assert "Suggested stop line: stand on 16 or higher" in system_prompt
     assert "You cannot draw cards yourself" in system_prompt
+    assert "exactly one lowercase value: hit or stand" in system_prompt
     assert "Target limit before bust: 21" in user_prompt
     assert "Visible opponents:" in user_prompt
 

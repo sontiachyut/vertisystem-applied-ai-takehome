@@ -25,7 +25,8 @@ class AIPlayerAgent:
             "You cannot draw cards yourself; only the dealer can execute a card draw, so you are only proposing an action. "
             "Respect the simplified rules: each scoring player can hold at most 3 cards, totals above 21 are bust, and the highest valid total wins. "
             f"Style profile: {style_name}. Suggested stop line: {stop_line}. "
-            "Return only the allowed structured response with a short reason."
+            "Return only the allowed structured response with a short reason. "
+            "Set action to exactly one lowercase value: hit or stand."
         )
         user_prompt = (
             f"Player: {context.self_state.display_name}\n"

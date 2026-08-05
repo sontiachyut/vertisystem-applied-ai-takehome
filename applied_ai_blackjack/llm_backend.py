@@ -71,7 +71,7 @@ class GeminiLLMBackend:
             "generationConfig": {
                 "responseMimeType": "application/json",
                 "responseSchema": schema,
-                "temperature": 0.2,
+                "temperature": 0.0,
             },
         }
         encoded_payload = json.dumps(request_payload).encode("utf-8")
@@ -96,7 +96,7 @@ class GeminiLLMBackend:
                 body = exc.read().decode("utf-8", errors="replace")
                 if exc.code not in {429, 500, 503} or attempt == self.max_retries:
                     raise ValueError(f"Gemini request failed with HTTP {exc.code}: {body}") from exc
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(_retry_delay_seconds_for_http_error(status_code=exc.code, body=body, attempt=attempt))
             except error.URLError as exc:
                 last_error = exc
                 if attempt == self.max_retries:
@@ -264,3 +264,44 @@ def _extract_first_json_object(text: str) -> dict | None:
         if isinstance(payload, dict):
             return payload
     return None
+
+
+def _retry_delay_seconds_for_http_error(*, status_code: int, body: str, attempt: int) -> float:
+    if status_code == 429:
+        retry_delay = _retry_delay_seconds_from_error_body(body)
+        if retry_delay is not None:
+            return retry_delay
+    return 1.5 * (attempt + 1)
+
+
+def _retry_delay_seconds_from_error_body(body: str) -> float | None:
+    parsed_payload = _try_parse_json_object(body.strip())
+    if parsed_payload is not None:
+        retry_delay = _retry_delay_seconds_from_payload(parsed_payload)
+        if retry_delay is not None:
+            return retry_delay
+
+    match = re.search(r"retry in\s+(\d+(?:\.\d+)?)s", body, re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    return None
+
+
+def _retry_delay_seconds_from_payload(payload: dict) -> float | None:
+    details = payload.get("error", {}).get("details", [])
+    for detail in details:
+        if not isinstance(detail, dict):
+            continue
+        retry_delay = detail.get("retryDelay")
+        if isinstance(retry_delay, str):
+            parsed_retry_delay = _parse_duration_seconds(retry_delay)
+            if parsed_retry_delay is not None:
+                return parsed_retry_delay
+    return None
+
+
+def _parse_duration_seconds(value: str) -> float | None:
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)s", value.strip())
+    if not match:
+        return None
+    return float(match.group(1))
